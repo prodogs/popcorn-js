@@ -6,6 +6,206 @@
  * Licensed under the MIT license
  */
 
+(function() {
+
+  document.addEventListener = document.addEventListener || function( event, callBack ) {
+
+    event = ( event === "DOMContentLoaded" ) ? "onreadystatechange" : "on" + event;
+
+    document.attachEvent( event, callBack );
+  };
+
+  document.removeEventListener = document.removeEventListener || function( event, callBack ) {
+
+    event = ( event === "DOMContentLoaded" ) ? "onreadystatechange" : "on" + event;
+
+    document.detachEvent( event, callBack );
+  };
+
+  HTMLScriptElement.prototype.addEventListener = HTMLScriptElement.prototype.addEventListener || function( event, callBack ) {
+
+    event = ( event === "load" ) ? "onreadystatechange" : "on" + event;
+
+    this.attachEvent( event, callBack );
+  };
+
+  HTMLScriptElement.prototype.removeEventListener = HTMLScriptElement.prototype.removeEventListener || function( event, callBack ) {
+
+    event = ( event === "load" ) ? "onreadystatechange" : "on" + event;
+
+    this.detachEvent( event, callBack );
+  };
+
+  document.createEvent = document.createEvent || function ( type ) {
+
+    return {
+      type : null,
+      target : null,
+      currentTarget : null,
+      cancelable : false,
+      bubbles : false,
+      initEvent : function (type, bubbles, cancelable)  {
+          this.type = type;
+      },
+      stopPropagation : function () {},
+      stopImmediatePropagation : function () {}
+    }
+  };
+
+  Array.prototype.forEach = Array.prototype.forEach || function( fn, context ) {
+
+    var obj = this,
+        hasOwn = Object.prototype.hasOwnProperty;
+
+    if ( !obj || !fn ) {
+      return {};
+    }
+
+    context = context || this;
+
+    var key, len;
+
+    for ( key in obj ) {
+      if ( hasOwn.call( obj, key ) ) {
+        fn.call( context, obj[ key ], key, obj );
+      }
+    }
+    return obj;
+  };
+
+  // Production steps of ECMA-262, Edition 5, 15.4.4.19
+  // Reference: http://es5.github.com/#x15.4.4.19
+  if ( !Array.prototype.map ) {
+
+    Array.prototype.map = function( callback, thisArg ) {
+
+      var T, A, k;
+
+      if ( this == null ) {
+        throw new TypeError( "this is null or not defined" );
+      }
+
+      // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+      var O = Object( this );
+
+      // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+      // 3. Let len be ToUint32(lenValue).
+      var len = O.length >>> 0;
+
+      // 4. If IsCallable(callback) is false, throw a TypeError exception.
+      // See: http://es5.github.com/#x9.11
+      if ( {}.toString.call( callback ) != "[object Function]" ) {
+        throw new TypeError( callback + " is not a function" );
+      }
+
+      // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+      if ( thisArg ) {
+        T = thisArg;
+      }
+
+      // 6. Let A be a new array created as if by the expression new Array(len) where Array is
+      // the standard built-in constructor with that name and len is the value of len.
+      A = new Array( len );
+
+      // 7. Let k be 0
+      k = 0;
+
+      // 8. Repeat, while k < len
+      while( k < len ) {
+
+        var kValue, mappedValue;
+
+        // a. Let Pk be ToString(k).
+        //   This is implicit for LHS operands of the in operator
+        // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+        //   This step can be combined with c
+        // c. If kPresent is true, then
+        if ( k in O ) {
+
+          // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+          kValue = O[ k ];
+
+          // ii. Let mappedValue be the result of calling the Call internal method of callback
+          // with T as the this value and argument list containing kValue, k, and O.
+          mappedValue = callback.call( T, kValue, k, O );
+
+          // iii. Call the DefineOwnProperty internal method of A with arguments
+          // Pk, Property Descriptor {Value: mappedValue, Writable: true, Enumerable: true, Configurable: true},
+          // and false.
+
+          // In browsers that support Object.defineProperty, use the following:
+          // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
+
+          // For best browser support, use the following:
+          A[ k ] = mappedValue;
+        }
+        // d. Increase k by 1.
+        k++;
+      }
+
+      // 9. return A
+      return A;
+    };
+  }
+
+  if ( !Array.prototype.indexOf ) {
+
+    Array.prototype.indexOf = function ( searchElement /*, fromIndex */ ) {
+
+      if ( this == null) {
+
+        throw new TypeError();
+      }
+
+      var t = Object( this ),
+          len = t.length >>> 0;
+
+      if ( len === 0 ) {
+
+        return -1;
+      }
+
+      var n = 0;
+
+      if ( arguments.length > 0 ) {
+
+        n = Number( arguments[ 1 ] );
+
+        if ( n != n ) { // shortcut for verifying if it's NaN
+
+          n = 0;
+        } else if ( n != 0 && n != Infinity && n != -Infinity ) {
+
+          n = ( n > 0 || -1 ) * Math.floor( Math.abs( n ) );
+        }
+      }
+
+      if ( n >= len ) {
+        return -1;
+      }
+
+      var k = n >= 0 ? n : Math.max( len - Math.abs( n ), 0 );
+
+      for (; k < len; k++ ) {
+
+        if ( k in t && t[ k ] === searchElement ) {
+
+          return k;
+        }
+      }
+
+      return -1;
+    }
+  }
+
+  if ( typeof String.prototype.trim !== "function" ) {
+
+    String.prototype.trim = function() {
+      return this.replace(/^\s+|\s+$/g, "");
+    };
+  }
+  
+})();
 /*
  * popcorn.js version bb226a9
  * http://popcornjs.org
@@ -2650,3 +2850,451 @@
   global.Popcorn = Popcorn;
 
 })(window, window.document);
+(function( Popcorn ) {
+
+  // combines calls of two function calls into one
+  var combineFn = function( first, second ) {
+
+    first = first || Popcorn.nop;
+    second = second || Popcorn.nop;
+
+    return function() {
+
+      first.apply( this, arguments );
+      second.apply( this, arguments );
+    };
+  };
+
+  //  ID string matching
+  var rIdExp  = /^(#([\w\-\_\.]+))$/;
+
+  Popcorn.player = function( name, player ) {
+
+    // return early if a player already exists under this name
+    if ( Popcorn[ name ] ) {
+
+      return;
+    }
+
+    player = player || {};
+
+    var playerFn = function( target, src, options ) {
+
+      options = options || {};
+
+      // List of events
+      var date = new Date() / 1000,
+          baselineTime = date,
+          currentTime = 0,
+          readyState = 0,
+          volume = 1,
+          muted = false,
+          events = {},
+
+          // The container div of the resource
+          container = typeof target === "string" ? Popcorn.dom.find( target ) : target,
+          basePlayer = {},
+          timeout,
+          popcorn;
+
+      if ( !Object.prototype.__defineGetter__ ) {
+
+        basePlayer = container || document.createElement( "div" );
+      }
+
+      // copies a div into the media object
+      for( var val in container ) {
+
+        // don't copy properties if using container as baseplayer
+        if ( val in basePlayer ) {
+
+          continue;
+        }
+
+        if ( typeof container[ val ] === "object" ) {
+
+          basePlayer[ val ] = container[ val ];
+        } else if ( typeof container[ val ] === "function" ) {
+
+          basePlayer[ val ] = (function( value ) {
+
+            // this is a stupid ugly kludgy hack in honour of Safari
+            // in Safari a NodeList is a function, not an object
+            if ( "length" in container[ value ] && !container[ value ].call ) {
+
+              return container[ value ];
+            } else {
+
+              return function() {
+
+                return container[ value ].apply( container, arguments );
+              };
+            }
+          }( val ));
+        } else {
+
+          Popcorn.player.defineProperty( basePlayer, val, {
+            get: (function( value ) {
+
+              return function() {
+
+                return container[ value ];
+              };
+            }( val )),
+            set: Popcorn.nop,
+            configurable: true
+          });
+        }
+      }
+
+      var timeupdate = function() {
+
+        date = new Date() / 1000;
+
+        if ( !basePlayer.paused ) {
+
+          basePlayer.currentTime = basePlayer.currentTime + ( date - baselineTime );
+          basePlayer.dispatchEvent( "timeupdate" );
+          timeout = setTimeout( timeupdate, 10 );
+        }
+
+        baselineTime = date;
+      };
+
+      basePlayer.play = function() {
+
+        this.paused = false;
+
+        if ( basePlayer.readyState >= 4 ) {
+
+          baselineTime = new Date() / 1000;
+          basePlayer.dispatchEvent( "play" );
+          timeupdate();
+        }
+      };
+
+      basePlayer.pause = function() {
+
+        this.paused = true;
+        basePlayer.dispatchEvent( "pause" );
+      };
+
+      Popcorn.player.defineProperty( basePlayer, "currentTime", {
+        get: function() {
+
+          return currentTime;
+        },
+        set: function( val ) {
+
+          // make sure val is a number
+          currentTime = +val;
+          basePlayer.dispatchEvent( "timeupdate" );
+
+          return currentTime;
+        },
+        configurable: true
+      });
+
+      Popcorn.player.defineProperty( basePlayer, "volume", {
+        get: function() {
+
+          return volume;
+        },
+        set: function( val ) {
+
+          // make sure val is a number
+          volume = +val;
+          basePlayer.dispatchEvent( "volumechange" );
+          return volume;
+        },
+        configurable: true
+      });
+
+      Popcorn.player.defineProperty( basePlayer, "muted", {
+        get: function() {
+
+          return muted;
+        },
+        set: function( val ) {
+
+          // make sure val is a number
+          muted = +val;
+          basePlayer.dispatchEvent( "volumechange" );
+          return muted;
+        },
+        configurable: true
+      });
+
+      Popcorn.player.defineProperty( basePlayer, "readyState", {
+        get: function() {
+
+          return readyState;
+        },
+        set: function( val ) {
+
+          readyState = val;
+          return readyState;
+        },
+        configurable: true
+      });
+
+      // Adds an event listener to the object
+      basePlayer.addEventListener = function( evtName, fn ) {
+
+        if ( !events[ evtName ] ) {
+
+          events[ evtName ] = [];
+        }
+
+        events[ evtName ].push( fn );
+        return fn;
+      };
+
+      // Removes an event listener from the object
+      basePlayer.removeEventListener = function( evtName, fn ) {
+
+        var i,
+            listeners = events[ evtName ];
+
+        if ( !listeners ){
+
+          return;
+        }
+
+        // walk backwards so we can safely splice
+        for ( i = events[ evtName ].length - 1; i >= 0; i-- ) {
+
+          if( fn === listeners[ i ] ) {
+
+            listeners.splice(i, 1);
+          }
+        }
+
+        return fn;
+      };
+
+      // Can take event object or simple string
+      basePlayer.dispatchEvent = function( oEvent ) {
+
+        var evt,
+            self = this,
+            eventInterface,
+            eventName = oEvent.type;
+
+        // A string was passed, create event object
+        if ( !eventName ) {
+
+          eventName = oEvent;
+          eventInterface  = Popcorn.events.getInterface( eventName );
+
+          if ( eventInterface ) {
+
+            evt = document.createEvent( eventInterface );
+            evt.initEvent( eventName, true, true, window, 1 );
+          }
+        }
+
+        if ( events[ eventName ] ) {
+
+          for ( var i = events[ eventName ].length - 1; i >= 0; i-- ) {
+
+            events[ eventName ][ i ].call( self, evt, self );
+          }
+        }
+      };
+
+      // Attempt to get src from playerFn parameter
+      basePlayer.src = src || "";
+      basePlayer.duration = 0;
+      basePlayer.paused = true;
+      basePlayer.ended = 0;
+
+      options && options.events && Popcorn.forEach( options.events, function( val, key ) {
+
+        basePlayer.addEventListener( key, val, false );
+      });
+
+      // true and undefined returns on canPlayType means we should attempt to use it,
+      // false means we cannot play this type
+      if ( player._canPlayType( container.nodeName, src ) !== false ) {
+
+        if ( player._setup ) {
+
+          player._setup.call( basePlayer, options );
+        } else {
+
+          // there is no setup, which means there is nothing to load
+          basePlayer.readyState = 4;
+          basePlayer.dispatchEvent( "loadedmetadata" );
+          basePlayer.dispatchEvent( "loadeddata" );
+          basePlayer.dispatchEvent( "canplaythrough" );
+        }
+      } else {
+
+        // Asynchronous so that users can catch this event
+        setTimeout( function() {
+          basePlayer.dispatchEvent( "error" );
+        }, 0 );
+      }
+
+      popcorn = new Popcorn.p.init( basePlayer, options );
+
+      if ( player._teardown ) {
+
+        popcorn.destroy = combineFn( popcorn.destroy, function() {
+
+          player._teardown.call( basePlayer, options );
+        });
+      }
+
+      return popcorn;
+    };
+
+    playerFn.canPlayType = player._canPlayType = player._canPlayType || Popcorn.nop;
+
+    Popcorn[ name ] = Popcorn.player.registry[ name ] = playerFn;
+  };
+
+  Popcorn.player.registry = {};
+
+  Popcorn.player.defineProperty = Object.defineProperty || function( object, description, options ) {
+
+    object.__defineGetter__( description, options.get || Popcorn.nop );
+    object.__defineSetter__( description, options.set || Popcorn.nop );
+  };
+
+  // player queue is to help players queue things like play and pause
+  // HTML5 video's play and pause are asynch, but do fire in sequence
+  // play() should really mean "requestPlay()" or "queuePlay()" and
+  // stash a callback that will play the media resource when it's ready to be played
+  Popcorn.player.playerQueue = function() {
+
+    var _queue = [],
+        _running = false;
+
+    return {
+      next: function() {
+
+        _running = false;
+        _queue.shift();
+        _queue[ 0 ] && _queue[ 0 ]();
+      },
+      add: function( callback ) {
+
+        _queue.push(function() {
+
+          _running = true;
+          callback && callback();
+        });
+
+        // if there is only one item on the queue, start it
+        !_running && _queue[ 0 ]();
+      }
+    };
+  };
+
+  // Popcorn.smart will attempt to find you a wrapper or player. If it can't do that,
+  // it will default to using an HTML5 video in the target.
+  Popcorn.smart = function( target, src, options ) {
+    var node = typeof target === "string" ? Popcorn.dom.find( target ) : target,
+        i, srci, j, media, mediaWrapper, popcorn, srcLength, 
+        // We leave HTMLVideoElement and HTMLAudioElement wrappers out
+        // of the mix, since we'll default to HTML5 video if nothing
+        // else works.  Waiting on #1254 before we add YouTube to this.
+        wrappers = "HTMLVimeoVideoElement HTMLSoundCloudAudioElement HTMLNullVideoElement".split(" ");
+
+    if ( !node ) {
+      Popcorn.error( "Specified target `" + target + "` was not found." );
+      return;
+    }
+
+    // If our src is not an array, create an array of one.
+    src = typeof src === "string" ? [ src ] : src;
+
+    // Loop through each src, and find the first playable.
+    for ( i = 0, srcLength = src.length; i < srcLength; i++ ) {
+      srci = src[ i ];
+
+      // See if we can use a wrapper directly, if not, try players.
+      for ( j = 0; j < wrappers.length; j++ ) {
+        mediaWrapper = Popcorn[ wrappers[ j ] ];
+        if ( mediaWrapper && mediaWrapper._canPlaySrc( srci ) === "probably" ) {
+          media = mediaWrapper( node );
+          popcorn = Popcorn( media, options );
+          // Set src, but not until after we return the media so the caller
+          // can get error events, if any.
+          setTimeout( function() {
+            media.src = srci;
+          }, 0 );
+          return popcorn;
+        }
+      }
+
+      // No wrapper can play this, check players.
+      for ( var key in Popcorn.player.registry ) {
+        if ( Popcorn.player.registry.hasOwnProperty( key ) ) {
+          if ( Popcorn.player.registry[ key ].canPlayType( node.nodeName, srci ) ) {
+            // Popcorn.smart( player, src, /* options */ )
+            return Popcorn[ key ]( node, srci, options );
+          }
+        }
+      }
+    }
+
+    // If we don't have any players or wrappers that can handle this,
+    // Default to using HTML5 video.  Similar to the HTMLVideoElement
+    // wrapper, we put a video in the div passed to us via:
+    // Popcorn.smart( div, src, options )
+    var videoHTML, videoID = Popcorn.guid( "popcorn-video-" ),
+        videoHTMLContainer = document.createElement( "div" );
+
+    videoHTMLContainer.style.width = "100%";
+    videoHTMLContainer.style.height = "100%";
+    node.appendChild( videoHTMLContainer );
+
+    // IE9 doesn't like dynamic creation of source elements on <video>
+    // so we do it in one shot via innerHTML.
+    videoHTML = '<video id="' +  videoID + '" preload=auto autobuffer>';
+    for ( i = 0, srcLength = src.length; i < srcLength; i++ ) {
+      videoHTML += '<source src="' + src[ i ] + '">';
+    }
+    videoHTML += "</video>";
+    videoHTMLContainer.innerHTML = videoHTML;
+
+    if ( options && options.events && options.events.error ) {
+      node.addEventListener( "error", options.events.error, false );
+    }
+    return Popcorn( '#' + videoID, options );
+  };
+})( Popcorn );
+(function( window, Popcorn ) {
+
+  var canPlayType = function( nodeName, url ) {
+    return ( typeof url === "string" &&
+             Popcorn.HTMLYouTubeVideoElement._canPlaySrc( url ) );
+  };
+
+  Popcorn.player( "youtube", {
+    _canPlayType: canPlayType
+  });
+
+  Popcorn.youtube = function( container, url, options ) {
+    if ( typeof console !== "undefined" && console.warn ) {
+      console.warn( "Deprecated player 'youtube'. Please use Popcorn.HTMLYouTubeVideoElement directly." );
+    }
+
+    var media = Popcorn.HTMLYouTubeVideoElement( container ),
+        popcorn = Popcorn( media, options );
+
+    // Set the src "soon" but return popcorn instance first, so
+    // the caller can listen for error events.
+    setTimeout( function() {
+      media.src = url;
+    }, 0 );
+
+    return popcorn;
+  };
+
+  Popcorn.youtube.canPlayType = canPlayType;
+
+}( window, Popcorn ));
